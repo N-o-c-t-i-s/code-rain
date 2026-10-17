@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Code Rain · Grey Code Rain</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; background: #242b30; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #f5f5f5; }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid #eee; outline-offset: 5px; }
+    .scene { position: fixed; inset: 24px; overflow: hidden; border-radius: 18px; background: #181818; }
+    #rain { position: absolute; inset: 0; width: 100%; height: 100%; color: #fff; pointer-events: none; }
+    .content { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 28px; text-align: center; pointer-events: none; }
+    .content[hidden] { display: none; }
+    h1 { font-size: clamp(27px, 2.2vw, 36px); font-weight: 600; letter-spacing: -1px; margin: 0 0 22px; }
+    .content p { margin: 0 0 32px; color: #e0e0e0; font-size: clamp(14px, 1.2vw, 18px); line-height: 1.6; }
+    .preview-button { pointer-events: auto; min-width: 196px; border: 0; border-radius: 30px; padding: 13px 24px; background: #fafafa; color: #222; font-size: 14px; }
+    .preview-button:hover { background: #ddd; }
+    .toolbar { position: absolute; top: 20px; right: 20px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; max-width: calc(100% - 40px); z-index: 2; opacity: .45; transition: opacity .2s; }
+    .toolbar:hover, .toolbar:focus-within { opacity: 1; }
+    .tool { border: 1px solid #ffffff12; color: #c4c4c4; background: #242424e6; border-radius: 10px; min-height: 38px; padding: 8px 12px; font-size: 12px; }
+    .tool:hover { color: white; background: #303030; }
+    .settings { position: absolute; top: 68px; right: 20px; width: 270px; max-width: calc(100% - 40px); z-index: 3; background: #222; border: 1px solid #363636; border-radius: 14px; padding: 20px; box-shadow: 0 15px 50px #0006; }
+    .settings[hidden] { display: none; }
+    .setting { display: block; margin-bottom: 19px; font-size: 13px; color: #c4c4c4; }
+    .setting:last-of-type { margin-bottom: 0; }
+    .setting span { display: flex; justify-content: space-between; margin-bottom: 10px; }
+    .setting output { color: #eee; font-variant-numeric: tabular-nums; }
+    input[type="range"] { width: 100%; accent-color: #c7c7c7; }
+    .setting select { width: 100%; padding: 9px 10px; border: 1px solid #484848; border-radius: 8px; background: #2d2d2d; color: #eee; }
+    .settings { max-height: calc(100% - 88px); overflow-y: auto; }
+    .hint { margin: 18px 0 0; color: #969696; font-size: 11px; line-height: 1.6; }
+    body.immersive .scene { inset: 0; border-radius: 0; }
+    @media (max-width: 600px) {
+      .scene { inset: 10px; border-radius: 12px; }
+      .toolbar { top: 12px; right: 12px; max-width: calc(100% - 24px); }
+      .content p { max-width: 270px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="scene" aria-label="Grey animated code rain preview">
+    <canvas id="rain" aria-hidden="true"></canvas>
+    <section class="content" id="content">
+      <h1>Code review</h1>
+      <p>Review code, catch issues, and make fixes with Codex</p>
+      <button class="preview-button" id="hide-content">Background only</button>
+    </section>
+    <div class="toolbar" aria-label="Preview controls">
+      <button class="tool" id="toggle-content" aria-pressed="true">Sample content</button>
+      <button class="tool" id="pause" aria-pressed="false">Pause</button>
+      <button class="tool" id="immersive" aria-pressed="false">Fill screen</button>
+      <button class="tool" id="settings-toggle" aria-expanded="false" aria-controls="settings">Adjust</button>
+    </div>
+    <aside class="settings" id="settings" aria-label="Code rain settings" hidden>
+      <label class="setting"><span>Fall motion</span><select id="motion"><option value="original">Original rhythm</option><option value="stepped">Stepped fall</option></select></label>
+      <label class="setting"><span>Speed <output id="speed-value">1.00</output></span><input id="speed" type="range" min="0.1" max="12" step="0.05" value="1"></label>
+      <label class="setting"><span>Brightness <output id="brightness-value">1.00</output></span><input id="brightness" type="range" min="0.15" max="2.6" step="0.01" value="1"></label>
+      <label class="setting"><span>Font size <output id="fontSize-value">14 px</output></span><input id="fontSize" type="range" min="9" max="24" step="1" value="14"></label>
+      <label class="setting"><span>Density <output id="density-value">1.00</output></span><input id="density" type="range" min="0.35" max="1.4" step="0.01" value="1"></label>
+      <label class="setting"><span>Centre fade <output id="centerFade-value">1.00</output></span><input id="centerFade" type="range" min="0" max="1" step="0.01" value="1"></label>
+      <button class="tool" id="restore-original">Restore original</button>
+      <p class="hint">Press Esc to close settings. The background stays still automatically when your system has “Reduce motion” turned on.</p>
+    </aside>
+  </main>
+  <script src="code-rain.js?v=20261004-original-model-8"></script>
+  <script>
+    const rain = new CodeRain(document.getElementById('rain'));
+    const content = document.getElementById('content');
+    const contentToggle = document.getElementById('toggle-content');
+    function showContent(show) {
+      content.hidden = !show;
+      contentToggle.setAttribute('aria-pressed', String(show));
+    }
+    contentToggle.addEventListener('click', () => showContent(content.hidden));
+    document.getElementById('hide-content').addEventListener('click', () => { showContent(false); contentToggle.focus(); });
+    document.getElementById('pause').addEventListener('click', (event) => {
+      rain.setPaused(!rain.paused);
+      event.currentTarget.textContent = rain.paused ? 'Resume' : 'Pause';
+      event.currentTarget.setAttribute('aria-pressed', String(rain.paused));
+    });
+    document.getElementById('immersive').addEventListener('click', (event) => {
+      const active = document.body.classList.toggle('immersive');
+      event.currentTarget.setAttribute('aria-pressed', String(active));
+      event.currentTarget.textContent = active ? 'Add margin' : 'Fill screen';
+    });
+    const settings = document.getElementById('settings');
+    const settingsToggle = document.getElementById('settings-toggle');
+    function showSettings(show) { settings.hidden = !show; settingsToggle.setAttribute('aria-expanded', String(show)); }
+    settingsToggle.addEventListener('click', () => showSettings(settings.hidden));
+    document.addEventListener('keydown', event => { if (event.key === 'Escape') { showSettings(false); settingsToggle.focus(); } });
+    document.getElementById('motion').addEventListener('change', event => {
+      rain.setOptions({ motion: event.currentTarget.value });
+    });
+    document.getElementById('restore-original').addEventListener('click', () => {
+      rain.reset();
+      document.getElementById('motion').value = rain.options.motion;
+      for (const key of ['speed', 'brightness', 'fontSize', 'density', 'centerFade']) {
+        const value = rain.options[key];
+        document.getElementById(key).value = value;
+        document.getElementById(key + '-value').textContent = key === 'fontSize' ? value + ' px' : value.toFixed(2);
+      }
+    });
+    for (const key of ['speed', 'brightness', 'fontSize', 'density', 'centerFade']) {
+      document.getElementById(key).addEventListener('input', event => {
+        const value = Number(event.currentTarget.value);
+        document.getElementById(key + '-value').textContent = key === 'fontSize' ? value + ' px' : value.toFixed(2);
+        rain.setOptions({ [key]: value });
+      });
+    }
+  </script>
+</body>
+</html>
